@@ -2,20 +2,10 @@ from time import sleep
 from loguru import logger
 from requests import Response, get
 from argparse import ArgumentParser
+from requests.exceptions import RequestException
 
 from src.setup.config import use_proper_city_name 
 from src.setup.types import Feed, BaseData, DataFromChosenFeed
-
-
-async def poll_for_free_bikes(city_name: str, url: str, polling_interval: int) -> DataFromChosenFeed:
-
-    details_of_all_feeds = get_all_feeds(city_name=city_name, url=url, polling_interval=polling_interval)    
-    chosen_feed: Feed = choose_feed(feeds=details_of_all_feeds) 
-    feed_url = get_url_for_chosen_feed(feed=chosen_feed)
-
-    feed_data = poll(city_name=args.city, is_base_url=False, url=feed_url)
-    data_on_free_bikes: DataFromChosenFeed = feed_data["data"]["bikes"]
-    return data_on_free_bikes
 
 
 def get_base_url_for_city(city_name: str) -> str:
@@ -32,18 +22,23 @@ def get_base_url_for_city(city_name: str) -> str:
 
 
 async def poll(city_name: str, is_base_url: bool, url: str) -> list[Feed] | BaseData | DataFromChosenFeed | None:
-    response: Response = get(url)
-
-    if response.status_code == 200:
-        data: BaseData | DataFromChosenFeed = response.json()
-        if is_base_url:
-            list_of_feeds: list[Feed] = data["data"]["en"]["feeds"]
-            return list_of_feeds
+    
+    try:
+        response: Response = get(url)
+        if response.status_code == 200:
+            data: BaseData | DataFromChosenFeed = response.json()
+            if is_base_url:
+                list_of_feeds: list[Feed] = data["data"]["en"]["feeds"]
+                return list_of_feeds
+            else:
+                return data 
         else:
-            return data 
-    else:
-        proper_city_name = use_proper_city_name(city_name=city_name)
-        logger.error(f"No data available for {proper_city_name}. Status code: {response.status_code}")
+            proper_city_name = use_proper_city_name(city_name=city_name)
+            logger.error(f"No data available for {proper_city_name}. Status code: {response.status_code}")
+
+    except RequestException as error:
+        logger.error(f"Could not fetch the data for {use_proper_city_name(city_name=city_name)}")
+        return None
 
 
 async def get_all_feeds(city_name: str, url: str, polling_interval: int)-> list[Feed] | None:
@@ -77,5 +72,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     url = get_base_url_for_city(city_name=args.city)
-    data_on_free_bikes: DataFromChosenFeed = get_data_on_free_bikes(city_name=args.city, url=url, polling_interval=5)
+    data_on_free_bikes: DataFromChosenFeed = poll_for_free_bikes(city_name=args.city, url=url, polling_interval=5)
     breakpoint()
