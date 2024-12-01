@@ -1,27 +1,30 @@
 from typing import NamedTuple
 
 
-class Feeds(NamedTuple):
+class Feed(NamedTuple):
     url: str
     name: str
 
 
 class FeedCollection(NamedTuple):
     name: str
-    feeds: list[Feeds]
+    feeds: list[Feed]
 
 
 class LanguageOptions(NamedTuple):
-    language_name: str
-    info: FeedCollection
+    language: str
+    language_feeds: FeedCollection
 
 
 class DataDict(NamedTuple):
     name: str
-    data: LanguageOptions
+    language_data: LanguageOptions
 
 
-class CompleteData(NamedTuple):
-    name: str 
+class BaseData(NamedTuple):
     data: DataDict
 
+
+class DataFromChosenFeed(NamedTuple):
+    name: str
+    vehicle_data: dict[str, list[dict[str, str|int]]] 

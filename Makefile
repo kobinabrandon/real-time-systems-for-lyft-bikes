@@ -1,2 +1,2 @@
 feed:
-	poetry run python src/feature_pipeline/data_extraction.py --city chicago
+	poetry run python src/feature_pipeline/feeds.py --city chicago 
