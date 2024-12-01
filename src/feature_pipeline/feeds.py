@@ -7,6 +7,17 @@ from src.setup.config import use_proper_city_name
 from src.setup.types import Feed, BaseData, DataFromChosenFeed
 
 
+async def poll_for_free_bikes(city_name: str, url: str, polling_interval: int) -> DataFromChosenFeed:
+
+    details_of_all_feeds = get_all_feeds(city_name=city_name, url=url, polling_interval=polling_interval)    
+    chosen_feed: Feed = choose_feed(feeds=details_of_all_feeds) 
+    feed_url = get_url_for_chosen_feed(feed=chosen_feed)
+
+    feed_data = poll(city_name=args.city, is_base_url=False, url=feed_url)
+    data_on_free_bikes: DataFromChosenFeed = feed_data["data"]["bikes"]
+    return data_on_free_bikes
+
+
 def get_base_url_for_city(city_name: str) -> str:
 
     cities_and_feeds = {
@@ -20,7 +31,7 @@ def get_base_url_for_city(city_name: str) -> str:
     return cities_and_feeds[city_name]
 
 
-def poll(city_name: str, is_base_url: bool, url: str) -> list[Feed] | DataFromChosenFeed | None:
+async def poll(city_name: str, is_base_url: bool, url: str) -> list[Feed] | BaseData | DataFromChosenFeed | None:
     response: Response = get(url)
 
     if response.status_code == 200:
@@ -35,7 +46,7 @@ def poll(city_name: str, is_base_url: bool, url: str) -> list[Feed] | DataFromCh
         logger.error(f"No data available for {proper_city_name}. Status code: {response.status_code}")
 
 
-def get_all_feeds(city_name: str, url: str, polling_interval: int)-> list[Feed] | None:
+async def get_all_feeds(city_name: str, url: str, polling_interval: int)-> list[Feed] | None:
 
     while True:
         feeds = poll(city_name, is_base_url=True, url=url) 
@@ -51,7 +62,7 @@ def choose_feed(feeds: list[Feed], feed_name: str="free_bike_status") -> Feed:
     for feed in feeds:
         try:
             if feed["name"] == feed_name: 
-                return feed
+               return feed
         except Exception as error:
             logger.error(error)
 
@@ -66,13 +77,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     url = get_base_url_for_city(city_name=args.city)
-    details_of_all_feeds = get_all_feeds(city_name=args.city, url=url, polling_interval=5)    
-    
-    chosen_feed: Feed = choose_feed(feeds=details_of_all_feeds) 
-    feed_url = get_url_for_chosen_feed(feed=chosen_feed)
-
-    feed_data = poll(city_name=args.city, is_base_url=False, url=feed_url)
-    breakpoint() 
-    
-
-
+    data_on_free_bikes: DataFromChosenFeed = get_data_on_free_bikes(city_name=args.city, url=url, polling_interval=5)
+    breakpoint()
