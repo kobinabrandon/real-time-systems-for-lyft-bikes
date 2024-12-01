@@ -13,10 +13,15 @@ class FeedCollection(NamedTuple):
 
 class LanguageOptions(NamedTuple):
     language_name: str
-    info: dict[str, FeedCollection]
+    info: FeedCollection
+
+
+class DataDict(NamedTuple):
+    name: str
+    data: LanguageOptions
 
 
 class CompleteData(NamedTuple):
-    name: str
-    data: dict[str, LanguageOptions]
+    name: str 
+    data: DataDict
 
