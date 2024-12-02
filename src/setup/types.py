@@ -1,30 +1,38 @@
-from typing import NamedTuple
+from dataclasses import dataclass
 
 
-class Feed(NamedTuple):
+@dataclass
+class Feed:
     url: str
     name: str
 
 
-class FeedCollection(NamedTuple):
+
+
+@dataclass
+class FeedsPerLanguage:
     name: str
-    feeds: list[Feed]
+    items: list[Feed] 
 
 
-class LanguageOptions(NamedTuple):
+@dataclass
+class LanguageOptions:
     language: str
-    language_feeds: FeedCollection
+    language_feeds: FeedsPerLanguage 
 
+    def __getitem__(self, item: str):
+        if item == "language":
+            return self.language
+        elif item == "language_feeds":
+            return self.language_feeds
 
-class DataDict(NamedTuple):
-    name: str
-    language_data: LanguageOptions
+@dataclass
+class DataFromChosenFeed:
+    name: str 
+    language_data: LanguageOptions 
 
-
-class BaseData(NamedTuple):
-    data: DataDict
-
-
-class DataFromChosenFeed(NamedTuple):
-    name: str
-    vehicle_data: dict[str, list[dict[str, str|int]]] 
+   def __getitem__(self, item: str):
+        if item == "key":
+            return self.key
+        elif item == "value":
+            return self.value

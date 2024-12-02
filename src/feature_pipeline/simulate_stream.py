@@ -1,11 +1,13 @@
-import time 
 import json 
 import asyncio
-import websockets 
-from websockets.client import ClientProtocol 
+from socket import create_connection
+
+from websockets.client import ClientConnection, ClientProtocol 
+from websockets.asyncio.server import serve
+from websockets.asyncio.client import connect
 
 from src.feature_pipeline.feeds import get_all_feeds, poll, choose_feed, get_url_for_chosen_feed
-from src.setup.types import DataFromChosenFeed
+from src.setup.types import DataFromChosenFeed, Feed, FeedCollection
 
 
 class StreamSimulator:
@@ -21,11 +23,12 @@ class StreamSimulator:
 
         while True:
             feed_data = await asyncio.to_thread(func=poll, city_name=city_name, is_base_url=False, url=feed_url)
+
             if feed_data:
                 data_on_free_bikes: DataFromChosenFeed = feed_data["data"]["bikes"]
                 message = json.dumps(data_on_free_bikes)
                 
-                _ = await asyncio.gather(
+                await asyncio.gather(
                     *(client.send(message) for client in self.clients)
                 )
 
@@ -34,4 +37,5 @@ class StreamSimulator:
 
             await asyncio.sleep(polling_interval)
 
-    async def handle_client()
+    async def handle_client():
+
