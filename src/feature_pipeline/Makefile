@@ -1,2 +1,2 @@
-feed:
-	poetry run python feeds.py --city chicago 
+web:
+	poetry run python simulate_stream.py
