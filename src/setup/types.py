@@ -60,3 +60,17 @@ class AllData:
     def __setitem__(self, name: str, data: LanguageOptions):
         self.data[name] = data
 
+
+@dataclass
+class FeedData:
+    data: dict[str, dict[str, list[dict[str, int|str]]]] = field(default_factory=dict)
+
+    def __getitem__(self, name: str):
+        if name in self.data:
+            return self.data[name]
+        else:
+            raise KeyError(f"There is no key name {name}")
+
+    def __setitem__(self, name: str, data: dict[str, list[dict[str, int|str]]]):
+        self.data[name] = data
+

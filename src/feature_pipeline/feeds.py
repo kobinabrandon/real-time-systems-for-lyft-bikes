@@ -1,6 +1,7 @@
+from collections.abc import Coroutine
+
 from loguru import logger
 from requests import Response, get
-from argparse import ArgumentParser
 from requests.exceptions import RequestException
 
 from src.setup.config import use_proper_city_name 
@@ -43,9 +44,9 @@ async def poll(city_name: str, for_feeds: bool) -> AllData | list[Feed] | None:
         logger.error(f"Could not fetch the data for {use_proper_city_name(city_name=city_name)}")
         return None
 
+from typing import Any    
+def choose_feed(feeds: list[Feed] | Coroutine[list[Feed], Any, Any, AllData, None], feed_name: str = "free_bike_status") -> Feed | None: 
     
-def choose_feed(feeds: list[Feed], feed_name: str = "free_bike_status") -> Feed | None: 
-
     for feed in feeds:
         try:
             if feed["data"] == feed_name: 
