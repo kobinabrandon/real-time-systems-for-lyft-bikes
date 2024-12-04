@@ -41,11 +41,12 @@ async def poll(city_name: str, for_feeds: bool) -> AllData | list[Feed] | None:
             return None
 
     except RequestException as error:
-        logger.error(f"Could not fetch the data for {use_proper_city_name(city_name=city_name)}")
+        logger.warning(f"Could not fetch the data for {use_proper_city_name(city_name=city_name)}")
+        logger.error(error)
         return None
 
-from typing import Any    
-def choose_feed(feeds: list[Feed] | Coroutine[list[Feed], Any, Any, AllData, None], feed_name: str = "free_bike_status") -> Feed | None: 
+
+def choose_feed(feeds: list[Feed] | Coroutine[list[Feed], AllData, None], feed_name: str = "free_bike_status") -> Feed | None: 
     
     for feed in feeds:
         try:

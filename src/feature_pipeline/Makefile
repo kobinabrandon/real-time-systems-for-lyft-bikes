@@ -1,2 +1,5 @@
-web:
-	poetry run python simulate_stream.py
+server:
+	poetry run python server.py --city chicago
+
+client:
+	poetry run python client.py
