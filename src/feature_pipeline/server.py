@@ -13,9 +13,10 @@ from src.setup.types import Feed, FeedData
 from src.feature_pipeline.feeds import poll, choose_feed
 
 
-def is_new_data(feed_data: FeedData, fetched_data: list[FeedData]) -> bool:
-    last_fetched = fetched_data[-1] 
-    return False if feed_data["last_updated"] == last_fetched["last_updated"] else True 
+def is_new_data(fetched_data: list[FeedData]) -> bool:
+    data_just_fetched: FeedData = fetched_data[-1]
+    penultimate_data: FeedData = fetched_data[-2]
+    return False if penultimate_data["last_updated"] == data_just_fetched["last_updated"] else True 
 
 
 async def poll_for_free_bikes(city_name: str, polling_interval: int = 5) -> FeedData:
@@ -31,11 +32,16 @@ async def poll_for_free_bikes(city_name: str, polling_interval: int = 5) -> Feed
             response = requests.get(url=feed_url)
             feed_data: FeedData = response.json()   
             fetched_data.append(feed_data)
+            
+            if len(fetched_data) == 1:
+                logger.success("Got the first bit of data")
+                continue
 
-            if not is_new_data(feed_data=feed_data, fetched_data=fetched_data):
+            elif len(fetched_data) > 1 and not is_new_data(fetched_data=fetched_data):
                 logger.warning("No new data received")
                 fetched_data.remove(feed_data)
-            else:
+
+            else:  
                 logger.success("Got new data!")
                 return feed_data
 
