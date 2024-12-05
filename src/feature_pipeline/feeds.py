@@ -1,5 +1,3 @@
-from collections.abc import Coroutine
-
 from loguru import logger
 from requests import Response, get
 from requests.exceptions import RequestException
@@ -21,7 +19,7 @@ def get_base_url_for_city(city_name: str) -> str:
     return cities_and_feeds[city_name]
 
 
-async def poll(city_name: str, for_feeds: bool) -> AllData | list[Feed] | None:
+def poll(city_name: str, for_feeds: bool) -> AllData | list[Feed] | None:
     
     try:
         base_url = get_base_url_for_city(city_name=city_name)
@@ -46,11 +44,11 @@ async def poll(city_name: str, for_feeds: bool) -> AllData | list[Feed] | None:
         return None
 
 
-def choose_feed(feeds: list[Feed] | Coroutine[list[Feed], AllData, None], feed_name: str = "free_bike_status") -> Feed | None: 
+def choose_feed(feeds: list[Feed], feed_name: str = "free_bike_status") -> Feed | None: 
     
     for feed in feeds:
         try:
-            if feed["data"] == feed_name: 
+            if feed["name"] == feed_name: 
                return feed
         except Exception as error:
             logger.error(error)

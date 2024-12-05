@@ -4,7 +4,7 @@ import requests
 import websockets
 
 from loguru import logger
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from collections.abc import AsyncGenerator
 from websockets.legacy.server import WebSocketServerProtocol 
 
@@ -12,10 +12,11 @@ from src.setup.types import Feed, FeedData
 from src.feature_pipeline.feeds import poll, choose_feed
 
 
-async def poll_for_free_bikes(city_name: str, polling_interval: int = 5) -> FeedData:
+async def poll_for_free_bikes(city_name: str, polling_interval: int) -> FeedData:
     
     while True:
         feeds = await asyncio.to_thread(poll, city_name=city_name, for_feeds = True)
+        breakpoint()
         chosen_feed: Feed = choose_feed(feeds=feeds) 
         feed_url = chosen_feed["url"]  
         
@@ -31,16 +32,15 @@ async def poll_for_free_bikes(city_name: str, polling_interval: int = 5) -> Feed
         await asyncio.sleep(polling_interval)
 
 
-async def data_stream(city_name: str, polling_interval: int = 5) -> AsyncGenerator[FeedData]:
-    while True:
-        yield await poll_for_free_bikes(city_name=city_name, polling_interval = polling_interval)
+async def data_stream(city_name: str, polling_interval: int = 1) -> AsyncGenerator[FeedData]:
+    yield await poll_for_free_bikes(city_name=city_name, polling_interval = polling_interval)
 
 
 async def handle_client(websocket: WebSocketServerProtocol):
     
     parser = ArgumentParser()
     _ = parser.add_argument("--city", type=str)
-    args = parser.parse_args()
+    args: Namespace = parser.parse_args()
 
     try:
         async for data in data_stream(city_name=args.city):
@@ -56,8 +56,8 @@ async def handle_client(websocket: WebSocketServerProtocol):
 
 async def main():
 
-    async with websockets.serve(handler=handle_client, host="localhost", port=8515):
-        logger.info(f"Server started at ws://localhost:8515")
+    async with websockets.serve(handler=handle_client, host="localhost", port=8525):
+        logger.info(f"Server started at ws://localhost:8525")
         await asyncio.Future()
 
 
