@@ -8,12 +8,20 @@ from argparse import ArgumentParser, Namespace
 from collections.abc import AsyncGenerator
 from websockets.legacy.server import WebSocketServerProtocol 
 
+from src.setup.config import config
 from src.setup.types import Feed, FeedData
 from src.feature_pipeline.feeds import poll, choose_feed
 
 
-async def poll_for_free_bikes(city_name: str, polling_interval: int) -> FeedData:
+def is_new_data(feed_data: FeedData, fetched_data: list[FeedData]) -> bool:
+    last_fetched = fetched_data[-1] 
+    return False if feed_data["last_updated"] == last_fetched["last_updated"] else True 
+
+
+async def poll_for_free_bikes(city_name: str, polling_interval: int = 5) -> FeedData:
     
+    fetched_data: list[FeedData] = []
+
     while True:
         feeds = await asyncio.to_thread(poll, city_name=city_name, for_feeds = True)
         chosen_feed: Feed = choose_feed(feeds=feeds) 
@@ -22,16 +30,23 @@ async def poll_for_free_bikes(city_name: str, polling_interval: int) -> FeedData
         try:
             response = requests.get(url=feed_url)
             feed_data: FeedData = response.json()   
-            print(feed_data)
-            return feed_data
+            fetched_data.append(feed_data)
+
+            if not is_new_data(feed_data=feed_data, fetched_data=fetched_data):
+                logger.warning("No new data received")
+                fetched_data.remove(feed_data)
+            else:
+                logger.success("Got new data!")
+                return feed_data
 
         except Exception as error:
-            logger.warning(f"Failure to fetch the data on {chosen_feed}. Error: {error}")
+            feed_name = chosen_feed["name"]
+            logger.warning(f"Failure to fetch the data on '{feed_name}'. Error: {error}")
 
         await asyncio.sleep(polling_interval)
 
 
-async def data_stream(city_name: str, polling_interval: int = 1) -> AsyncGenerator[FeedData]:
+async def data_stream(city_name: str, polling_interval: int = 5) -> AsyncGenerator[FeedData]:
     yield await poll_for_free_bikes(city_name=city_name, polling_interval = polling_interval)
 
 
@@ -51,8 +66,8 @@ async def handle_client(websocket: WebSocketServerProtocol):
 
 async def main():
 
-    async with websockets.serve(handler=handle_client, host="localhost", port=8529):
-        logger.info(f"Server started at ws://localhost:8529")
+    async with websockets.serve(handler=handle_client, host=config.host_name, port=config.port):
+        logger.info(f"Server started at ws://localhost:8534")
         await asyncio.Future()
 
 

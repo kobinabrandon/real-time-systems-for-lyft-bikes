@@ -2,12 +2,14 @@ import asyncio
 import websockets 
 from loguru import logger
 
+from src.setup.config import config
+
 
 async def client():
     while True:
-        async with websockets.connect("ws://localhost:8529") as websocket:
+        async with websockets.connect(f"ws://{config.host_name}:{config.port}") as websocket:
             _ = await websocket.recv()
-            logger.success("Received: message")
+            logger.success("Received message")
 
 
 if __name__ == "__main__":
