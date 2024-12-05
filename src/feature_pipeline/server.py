@@ -16,7 +16,6 @@ async def poll_for_free_bikes(city_name: str, polling_interval: int) -> FeedData
     
     while True:
         feeds = await asyncio.to_thread(poll, city_name=city_name, for_feeds = True)
-        breakpoint()
         chosen_feed: Feed = choose_feed(feeds=feeds) 
         feed_url = chosen_feed["url"]  
         
@@ -49,15 +48,11 @@ async def handle_client(websocket: WebSocketServerProtocol):
     except asyncio.CancelledError as error:
         logger.error(f"Cancelled: {error}")
     
-    finally:
-        await websocket.close()
-        logger.warning("Disconnected")
-
 
 async def main():
 
-    async with websockets.serve(handler=handle_client, host="localhost", port=8525):
-        logger.info(f"Server started at ws://localhost:8525")
+    async with websockets.serve(handler=handle_client, host="localhost", port=8529):
+        logger.info(f"Server started at ws://localhost:8529")
         await asyncio.Future()
 
 

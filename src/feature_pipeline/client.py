@@ -4,9 +4,10 @@ from loguru import logger
 
 
 async def client():
-    async with websockets.connect("ws://localhost:8525") as websocket:
-        message = await websocket.recv()
-        logger.success(f"Received: {message}")
+    while True:
+        async with websockets.connect("ws://localhost:8529") as websocket:
+            _ = await websocket.recv()
+            logger.success("Received: message")
 
 
 if __name__ == "__main__":
