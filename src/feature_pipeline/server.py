@@ -19,9 +19,8 @@ def is_new_data(fetched_data: list[FeedData]) -> bool:
     return False if penultimate_data["last_updated"] == data_just_fetched["last_updated"] else True 
 
 
+fetched_data: list[FeedData] = []
 async def poll_for_free_bikes(city_name: str, polling_interval: int = 5) -> FeedData:
-    
-    fetched_data: list[FeedData] = []
 
     while True:
         feeds = await asyncio.to_thread(poll, city_name=city_name, for_feeds = True)
@@ -33,15 +32,11 @@ async def poll_for_free_bikes(city_name: str, polling_interval: int = 5) -> Feed
             feed_data: FeedData = response.json()   
             fetched_data.append(feed_data)
             
-            if len(fetched_data) == 1:
-                logger.success("Got the first bit of data")
-                continue
-
-            elif len(fetched_data) > 1 and not is_new_data(fetched_data=fetched_data):
+            if len(fetched_data) > 1 and not is_new_data(fetched_data=fetched_data): 
                 logger.warning("No new data received")
                 fetched_data.remove(feed_data)
 
-            else:  
+            else: 
                 logger.success("Got new data!")
                 return feed_data
 
@@ -72,12 +67,11 @@ async def handle_client(websocket: WebSocketServerProtocol):
 
 async def main():
 
-    async with websockets.serve(handler=handle_client, host=config.host_name, port=config.port):
-        logger.info(f"Server started at ws://localhost:8534")
+    async with websockets.serve(handler=handle_client, host=config.host, port=config.port):
+        logger.info(f"Server started at ws://{config.host}:{config.port}")
         await asyncio.Future()
 
 
 if __name__ == "__main__":
     asyncio.run(main())
-
 

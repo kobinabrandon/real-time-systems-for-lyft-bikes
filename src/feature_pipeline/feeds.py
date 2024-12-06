@@ -44,7 +44,7 @@ def poll(city_name: str, for_feeds: bool) -> AllData | list[Feed] | None:
         return None
 
 
-def choose_feed(feeds: list[Feed], feed_name: str = "free_bike_status") -> Feed | None: 
+def choose_feed(feeds: list[Feed], feed_name: str = "station_information") -> Feed | None: 
     
     for feed in feeds:
         try:
