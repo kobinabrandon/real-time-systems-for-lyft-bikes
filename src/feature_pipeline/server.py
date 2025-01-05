@@ -8,33 +8,28 @@ from argparse import ArgumentParser, Namespace
 from collections.abc import AsyncGenerator
 from websockets.legacy.server import WebSocketServerProtocol 
 
-from src.setup.config import config
-from src.setup.types import Feed, FeedData
+from src.setup.config import websocket_config 
+from src.setup.paths import RAW_DATA_DIR, make_data_directories
+from src.setup.custom_types import Feed, FeedData
 from src.feature_pipeline.feeds import poll, choose_feed
 
 
-def is_new_data(fetched_data: list[FeedData]) -> bool:
-    data_just_fetched: FeedData = fetched_data[-1]
-    penultimate_data: FeedData = fetched_data[-2]
-    return False if penultimate_data["last_updated"] == data_just_fetched["last_updated"] else True 
-
-
-fetched_data: list[FeedData] = []
+collected_data: list[FeedData] = []
 async def poll_for_free_bikes(city_name: str, polling_interval: int = 5) -> FeedData:
 
     while True:
-        feeds = await asyncio.to_thread(poll, city_name=city_name, for_feeds = True)
-        chosen_feed: Feed = choose_feed(feeds=feeds) 
+        all_feeds = await asyncio.to_thread(poll, city_name=city_name, for_feeds = True)
+        chosen_feed: Feed = choose_feed(feeds=all_feeds) 
         feed_url = chosen_feed["url"]  
         
         try:
             response = requests.get(url=feed_url)
             feed_data: FeedData = response.json()   
-            fetched_data.append(feed_data)
+            collected_data.append(feed_data)
             
-            if len(fetched_data) > 1 and not is_new_data(fetched_data=fetched_data): 
+            if len(collected_data) > 1 and not is_new_data(collected_data=collected_data): 
                 logger.warning("No new data received")
-                fetched_data.remove(feed_data)
+                collected_data.remove(feed_data)
 
             else: 
                 logger.success("Got new data!")
@@ -45,6 +40,12 @@ async def poll_for_free_bikes(city_name: str, polling_interval: int = 5) -> Feed
             logger.warning(f"Failure to fetch the data on '{feed_name}'. Error: {error}")
 
         await asyncio.sleep(polling_interval)
+
+
+def is_new_data(collected_data: list[FeedData]) -> bool:
+    data_just_fetched: FeedData = collected_data[-1]
+    penultimate_data: FeedData = collected_data[-2]
+    return False if penultimate_data["last_updated"] == data_just_fetched["last_updated"] else True 
 
 
 async def data_stream(city_name: str, polling_interval: int = 5) -> AsyncGenerator[FeedData]:
@@ -67,8 +68,10 @@ async def handle_client(websocket: WebSocketServerProtocol):
 
 async def main():
 
-    async with websockets.serve(handler=handle_client, host=config.host, port=config.port):
-        logger.info(f"Server started at ws://{config.host}:{config.port}")
+    make_data_directories()
+
+    async with websockets.serve(handler=handle_client, host=websocket_config.host, port=websocket_config.port):
+        logger.info(f"Server started at ws://{websocket_config.host}:{websocket_config.port}")
         await asyncio.Future()
 
 

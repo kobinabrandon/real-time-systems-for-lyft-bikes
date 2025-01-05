@@ -1,7 +1,6 @@
 """
 Creating custom types for the data that is being provided by the various GBFS data sources.
 """
-
 from dataclasses import dataclass, field
 
 

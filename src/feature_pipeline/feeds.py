@@ -3,7 +3,7 @@ from requests import Response, get
 from requests.exceptions import RequestException
 
 from src.setup.config import use_proper_city_name 
-from src.setup.types import Feed, AllData
+from src.setup.custom_types import Feed, AllData
 
 
 def get_base_url_for_city(city_name: str) -> str:
@@ -44,7 +44,7 @@ def poll(city_name: str, for_feeds: bool) -> AllData | list[Feed] | None:
         return None
 
 
-def choose_feed(feeds: list[Feed], feed_name: str = "station_information") -> Feed | None: 
+def choose_feed(feeds: list[Feed], feed_name: str = "free_bike_status") -> Feed | None: 
     
     for feed in feeds:
         try:
@@ -53,4 +53,8 @@ def choose_feed(feeds: list[Feed], feed_name: str = "station_information") -> Fe
         except Exception as error:
             logger.error(error)
             return None 
+
+
+
+
 

@@ -1,10 +1,10 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class GeneralConfig(BaseSettings):
+class WebsocketConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="allow")
     host: str = "localhost"
-    port: int = 6969 
+    port: int = 6963 
 
 
 def use_proper_city_name(city_name: str) -> str:
@@ -15,5 +15,5 @@ def use_proper_city_name(city_name: str) -> str:
         return city_name.title()
 
 
-config = GeneralConfig()
+websocket_config = WebsocketConfig()
 
