@@ -4,11 +4,12 @@ from pathlib import Path
 PARENT_DIR = Path(__file__).parent.resolve().parent.resolve().parent.resolve()
 DATA_DIR = PARENT_DIR / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
+GEOGRAPHICAL_DATA = DATA_DIR / "geographical"
 
 
 def make_data_directories():
 
-    for path in [DATA_DIR, RAW_DATA_DIR]:
+    for path in [DATA_DIR, RAW_DATA_DIR, GEOGRAPHICAL_DATA]:
         if not Path(path).exists():
             os.mkdir(path)
 

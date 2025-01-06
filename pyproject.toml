@@ -12,6 +12,9 @@ loguru = "^0.7.2"
 quixstreams = "^3.3.0"
 websockets = "^14.1"
 pydantic-settings = "^2.6.1"
+geopy = "^2.4.1"
+python-dotenv = "^1.0.1"
+tqdm = "^4.67.1"
 
 
 [build-system]

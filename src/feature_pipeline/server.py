@@ -9,21 +9,26 @@ from collections.abc import AsyncGenerator
 from websockets.legacy.server import WebSocketServerProtocol 
 
 from src.setup.config import websocket_config 
-from src.setup.paths import RAW_DATA_DIR, make_data_directories
-from src.setup.custom_types import Feed, FeedData
-from src.feature_pipeline.feeds import poll, choose_feed
+from src.setup.custom_types import FeedData
+from src.setup.paths import make_data_directories
+from src.feature_pipeline.feeds import choose_feed, poll
+from src.feature_pipeline.geocoding import extract_geodata_from_feed
 
 
 collected_data: list[FeedData] = []
-async def poll_for_free_bikes(city_name: str, polling_interval: int = 5) -> FeedData:
+async def poll_feed(feed_name: str, city_name: str, polling_interval: int = 5) -> FeedData:
 
     while True:
-        all_feeds = await asyncio.to_thread(poll, city_name=city_name, for_feeds = True)
-        chosen_feed: Feed = choose_feed(feeds=all_feeds) 
-        feed_url = chosen_feed["url"]  
+        all_feeds = await asyncio.to_thread(poll, city_name=city_name, for_feeds=True)
+        chosen_feed: Feed = choose_feed(feed_name=feed_name, feeds=all_feeds) 
         
-        try:
-            response = requests.get(url=feed_url)
+        feed_url = chosen_feed["url"]  
+        feed_name = chosen_feed["name"]
+
+        response = requests.get(url=feed_url)
+        if response.status_code != 200:
+            logger.error(f"Failure to fetch the data on '{feed_name}'. Status code: {response.status_code}")
+        else:
             feed_data: FeedData = response.json()   
             collected_data.append(feed_data)
             
@@ -33,33 +38,48 @@ async def poll_for_free_bikes(city_name: str, polling_interval: int = 5) -> Feed
 
             else: 
                 logger.success("Got new data!")
-                return feed_data
 
-        except Exception as error:
-            feed_name = chosen_feed["name"]
-            logger.warning(f"Failure to fetch the data on '{feed_name}'. Error: {error}")
+                if feed_name == "station_information":
+                    extract_geodata_from_feed(feed_data=feed_data)
+                    return feed_data
 
         await asyncio.sleep(polling_interval)
 
 
+def set_arguments() -> Namespace:
+    
+    parser = ArgumentParser()
+    _ = parser.add_argument("--feed_name", type=str)
+    _ = parser.add_argument("--city_name", type=str)
+    return parser.parse_args()
+
+
 def is_new_data(collected_data: list[FeedData]) -> bool:
+    """
+    Check whether the data that has been fetched contains data that is new when compared to the 
+    data that waas last connected. 
+    
+    Args:
+        collected_data: the data that has been collected from the websocket connection. 
+
+    Returns:
+        bool: whether the data contains new data or not.
+    """
     data_just_fetched: FeedData = collected_data[-1]
     penultimate_data: FeedData = collected_data[-2]
     return False if penultimate_data["last_updated"] == data_just_fetched["last_updated"] else True 
 
 
-async def data_stream(city_name: str, polling_interval: int = 5) -> AsyncGenerator[FeedData]:
-    yield await poll_for_free_bikes(city_name=city_name, polling_interval = polling_interval)
+async def data_stream(feed_name: str, city_name: str, polling_interval: int = 5) -> AsyncGenerator[FeedData]:
+    yield await poll_feed(feed_name=feed_name, city_name=city_name, polling_interval = polling_interval)
 
 
 async def handle_client(websocket: WebSocketServerProtocol):
     
-    parser = ArgumentParser()
-    _ = parser.add_argument("--city", type=str)
-    args: Namespace = parser.parse_args()
+    args = set_arguments()
 
     try:
-        async for data in data_stream(city_name=args.city):
+        async for data in data_stream(feed_name=args.feed_name, city_name=args.city_name):
             await websocket.send(json.dumps(data))
 
     except asyncio.CancelledError as error:
@@ -69,7 +89,6 @@ async def handle_client(websocket: WebSocketServerProtocol):
 async def main():
 
     make_data_directories()
-
     async with websockets.serve(handler=handle_client, host=websocket_config.host, port=websocket_config.port):
         logger.info(f"Server started at ws://{websocket_config.host}:{websocket_config.port}")
         await asyncio.Future()
