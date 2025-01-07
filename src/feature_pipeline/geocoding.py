@@ -1,75 +1,53 @@
 import json
-from pathlib import Path
 
-from tqdm import tqdm 
 from loguru import logger
 from geopy import Nominatim, Photon
 from geopy.exc import GeocoderUnavailable
 
 from src.setup.config import general_config 
-from src.setup.custom_types import FeedData 
-from src.setup.paths import GEOGRAPHICAL_DATA, make_data_directories
- 
-
-def extract_geodata_from_feed(feed_data: FeedData):
-
-    geodata = get_saved_geodata()    
-    all_station_data = feed_data["data"]["stations"]
-    
-    for station in tqdm(iterable=all_station_data, desc="Collecting station geodata"):
-        station_name = str(station["name"])
-        coordinate = [float(station["lat"]), float(station["lon"])]
-        geodata[station_name] = coordinate
-
-    save_geodata(geodata=geodata)
+from src.feature_pipeline.extraction import Extractor
 
 
-def reverse_geocode(latitude: float, longitude: float):
-     
-    coordinate = (latitude, longitude)
-    geodata = get_saved_geodata()     
-   
+def reverse_geocode(feed_name: str, latitude: float, longitude: float)  -> None:
+    """
+    Take a latitude and longitude, and request its address from Nominatim. If that fails,
+    a request will be made to Photon.
+
+    Args:
+        latitude: the latitude of the coordinate in question. 
+        longitude: the longitude of the coordinate in question. 
+        feed_name: the name of the feed whose geodata we will be looking for.  
+    """
+    coordinate = [latitude, longitude]
+    extractor = Extractor(feed_name=feed_name, feed_data=None, extraction_target="geodata") 
+    geodata = extractor.get_saved_data()
+
     if coordinate not in geodata.values():
         logger.warning(f"The address of {coordinate} is unknown. Attempting to finding it...")
         try:
             nominatim = Nominatim(user_agent=general_config.email)
             first_try = str(nominatim.reverse(query=coordinate))
 
-            if first_try == "None":
+            if first_try != "None":
+                geodata[first_try] = coordinate
+
+            else:
                 logger.warning(f"Nominatim was unable to process {coordinate}. Trying to use Photon")
                 photon = Photon(user_agent=general_config.email)
                 second_try = str(photon.reverse(query=coordinate))
                 
-                geodata[second_try] = coordinate
-                
-            else:
-                geodata[first_try] = coordinate
+                if second_try != "None":
+                    logger.error(f"Photon was unable to process {coordinate}.")
+                    geodata[second_try] = coordinate
 
         except GeocoderUnavailable as error:
             logger.error(error)
     else:
-        logger.error(f"We already have the address for {coordinate}.")
+        logger.warning(f"We already have the address for {coordinate}.")
 
-    with open(file_path, mode="w") as file:
+    with open(extractor.get_path_to_data(), mode="w") as file:
         json.dump(geodata, file)
 
 
-def save_geodata(geodata: dict[str, list[float]], file_path: Path = GEOGRAPHICAL_DATA / "station_geodata.json") -> None:
+
     
-    logger.info("Saving station geodata to disk")
-    with open(file_path, mode="w") as file:
-        json.dump(geodata, file)
-
-
-def get_saved_geodata(file_path: Path = GEOGRAPHICAL_DATA / "station_geodata.json") -> dict[str, list[float]]:
-
-    make_data_directories()
-
-    if Path(file_path).exists():
-
-        logger.info("Loading saved station geodata")
-        with open(file_path, mode="rb") as file:
-            return json.load(file)
-    else:
-        return {}
-

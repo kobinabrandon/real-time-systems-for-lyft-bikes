@@ -6,13 +6,14 @@ import websockets
 from loguru import logger
 from argparse import ArgumentParser, Namespace
 from collections.abc import AsyncGenerator
-from websockets.legacy.server import WebSocketServerProtocol 
+from websockets.legacy.server import WebSocketServerProtocol
 
 from src.setup.config import websocket_config 
 from src.setup.custom_types import FeedData
 from src.setup.paths import make_data_directories
+from src.feature_pipeline.extraction import Extractor
 from src.feature_pipeline.feeds import choose_feed, poll
-from src.feature_pipeline.geocoding import extract_geodata_from_feed
+from src.feature_pipeline.geocoding import reverse_geocode
 
 
 collected_data: list[FeedData] = []
@@ -21,11 +22,11 @@ async def poll_feed(feed_name: str, city_name: str, polling_interval: int = 5) -
     while True:
         all_feeds = await asyncio.to_thread(poll, city_name=city_name, for_feeds=True)
         chosen_feed: Feed = choose_feed(feed_name=feed_name, feeds=all_feeds) 
-        
         feed_url = chosen_feed["url"]  
         feed_name = chosen_feed["name"]
 
         response = requests.get(url=feed_url)
+
         if response.status_code != 200:
             logger.error(f"Failure to fetch the data on '{feed_name}'. Status code: {response.status_code}")
         else:
@@ -38,10 +39,14 @@ async def poll_feed(feed_name: str, city_name: str, polling_interval: int = 5) -
 
             else: 
                 logger.success("Got new data!")
+                extractor = Extractor(feed_name=feed_name, feed_data=feed_data, extraction_target="geodata")
 
                 if feed_name == "station_information":
-                    extract_geodata_from_feed(feed_data=feed_data)
+                    extractor.extract_data()
                     return feed_data
+                #
+                # elif feed_name == "free_bike_status":
+                #     reverse_geocode()
 
         await asyncio.sleep(polling_interval)
 
