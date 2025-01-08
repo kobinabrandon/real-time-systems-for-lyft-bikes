@@ -33,15 +33,19 @@ class Extractor:
                 
                 for station in tqdm(iterable=all_station_data, desc="Collecting station geodata"):
                     station_name = str(station["name"])
-                    coordinate = [float(station["lat"]), float(station["lon"])]
-                    geodata[station_name] = coordinate
+                    latitude, longitude = float(station["lat"]), float(station["lon"])
+                    geodata[station_name] = [latitude, longitude] 
             
             elif self.feed_name == "free_bike_status":
                 all_free_bikes = self.feed_data["data"]["bikes"]
 
+                from src.feature_pipeline.geocoding import reverse_geocode
                 for bike in tqdm(iterable=all_free_bikes, desc="Collecting information on free bikes"):
-                    coordinate = [float(bike["lat"]), float(bike["lon"])]
+                    latitude, longitude = float(bike["lat"]), float(bike["lon"])
                     
+                    if "station_name" not in bike.keys():
+                        reverse_geocode(feed_name=self.feed_name, latitude=latitude, longitude=longitude)
+                         
             self.save_data(data=geodata)
 
     def get_path_to_data(self):

@@ -16,7 +16,7 @@ def reverse_geocode(feed_name: str, latitude: float, longitude: float)  -> None:
     Args:
         latitude: the latitude of the coordinate in question. 
         longitude: the longitude of the coordinate in question. 
-        feed_name: the name of the feed whose geodata we will be looking for.  
+        feed_name: name of the feed whose geodata we will be looking for.  
     """
     coordinate = [latitude, longitude]
     extractor = Extractor(feed_name=feed_name, feed_data=None, extraction_target="geodata") 
@@ -37,17 +37,15 @@ def reverse_geocode(feed_name: str, latitude: float, longitude: float)  -> None:
                 second_try = str(photon.reverse(query=coordinate))
                 
                 if second_try != "None":
-                    logger.error(f"Photon was unable to process {coordinate}.")
                     geodata[second_try] = coordinate
+                else:
+                    logger.error(f"Photon was unable to process {coordinate}.")
+
+            with open(extractor.get_path_to_data(), mode="w") as file:
+                json.dump(geodata, file)
 
         except GeocoderUnavailable as error:
             logger.error(error)
     else:
         logger.warning(f"We already have the address for {coordinate}.")
 
-    with open(extractor.get_path_to_data(), mode="w") as file:
-        json.dump(geodata, file)
-
-
-
-    
