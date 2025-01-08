@@ -6,17 +6,14 @@ from src.feature_pipeline.server import poll_feed
 from src.feature_pipeline.geocoding import Extractor 
 
 
-
 async def produce_bikes(
-    kafka_broker_address: str,
-    kafka_topic: str,
-    city_name: str,
     id: str,
-    feed_name: str = "free_bike_status"
-
+    city_name: str,
+    feed_name: str = "free_bike_status",
+    kafka_broker_address: str = redpanda_config.kafka_broker_address
 ):
     app = Application(broker_address=kafka_broker_address)
-    topic = app.topic(name=kafka_topic, value_serializer="json")
+    topic = app.topic(name=feed_name, value_serializer="json")
 
     with app.get_producer() as producer:
         while True:
@@ -32,10 +29,5 @@ async def produce_bikes(
 
 if __name__ == "__main__":
     asyncio.run(
-        produce_bikes(
-            kafka_broker_address=redpanda_config.kafka_broker_address,
-            kafka_topic="free_bikes",
-            city_name="portland",
-            id="sdfs"
-        )
+        produce_bikes(city_name="portland", id="sdfs")
     )

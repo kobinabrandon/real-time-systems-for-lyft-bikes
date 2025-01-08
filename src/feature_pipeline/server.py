@@ -20,9 +20,7 @@ async def poll_feed(feed_name: str, city_name: str, polling_interval: int = 5) -
     while True:
         all_feeds = await asyncio.to_thread(poll, city_name=city_name, for_feeds=True)
         chosen_feed: Feed = choose_feed(feed_name=feed_name, feeds=all_feeds) 
-
-        feed_url = chosen_feed["url"]  
-        feed_name = chosen_feed["name"]
+        feed_url: str = chosen_feed["url"]  
 
         response = requests.get(url=feed_url)
 
@@ -35,13 +33,20 @@ async def poll_feed(feed_name: str, city_name: str, polling_interval: int = 5) -
             if len(collected_data) > 1 and not is_new_data(collected_data=collected_data): 
                 logger.warning("No new data received")
                 collected_data.remove(feed_data)
-
             else: 
-                logger.success("Got new data!")
                 from src.feature_pipeline.extraction import Extractor
-                extractor = Extractor(feed_name=feed_name, feed_data=feed_data, extraction_target="geodata")
+                logger.success("Got new data!")
 
                 if feed_name in ["station_information", "free_bike_status"]:
+                    logger.info("Extracting geodata...")
+                    
+                    extractor = Extractor(
+                        city_name=city_name, 
+                        feed_name=feed_name, 
+                        feed_data=feed_data, 
+                        extraction_target="geodata"
+                    )
+
                     extractor.extract_data()
                     return feed_data
 
@@ -90,7 +95,6 @@ async def handle_client(websocket: WebSocketServerProtocol):
 
 async def main():
 
-    make_data_directories()
     async with websockets.serve(handler=handle_client, host=websocket_config.host, port=websocket_config.port):
         logger.info(f"Server started at ws://{websocket_config.host}:{websocket_config.port}")
         await asyncio.Future()
