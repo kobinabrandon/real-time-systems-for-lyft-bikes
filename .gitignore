@@ -3,4 +3,5 @@
 
 # Directories
 **/data/
+**/__pycache__/
 

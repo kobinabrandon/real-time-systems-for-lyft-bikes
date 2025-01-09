@@ -1,5 +1,3 @@
-import json
-
 from loguru import logger
 from geopy import Nominatim, Photon
 from collections.abc import AsyncGenerator
@@ -16,7 +14,9 @@ async def get_station_geodata(city_name: str, feed_name: str = "station_informat
 def reverse_geocode(latitude: float, longitude: float) -> dict[str, list[float]]: 
     """
     Take a latitude and longitude, and request its address from Nominatim. If that fails,
-    a request will be made to Photon.
+    a request will be made to Photon. If this second attempt fails, the address will read "None".
+    I don't expect that there'll be many of these, but I'll investigate these locations at some 
+    point in the future
 
     Args:
         latitude: the latitude of the coordinate in question. 
