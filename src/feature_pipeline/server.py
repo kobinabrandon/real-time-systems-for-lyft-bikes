@@ -10,7 +10,6 @@ from websockets.legacy.server import WebSocketServerProtocol
 
 from src.setup.config import websocket_config 
 from src.setup.custom_types import FeedData
-from src.setup.paths import make_data_directories
 from src.feature_pipeline.feeds import choose_feed, poll
 
 
@@ -34,20 +33,14 @@ async def poll_feed(feed_name: str, city_name: str, polling_interval: int = 5) -
                 logger.warning("No new data received")
                 collected_data.remove(feed_data)
             else: 
-                from src.feature_pipeline.extraction import Extractor
+                from src.feature_pipeline.extraction import GeodataExtractor 
                 logger.success("Got new data!")
 
                 if feed_name in ["station_information", "free_bike_status"]:
                     logger.info("Extracting geodata...")
-                    
-                    extractor = Extractor(
-                        city_name=city_name, 
-                        feed_name=feed_name, 
-                        feed_data=feed_data, 
-                        extraction_target="geodata"
-                    )
+                    extractor = GeodataExtractor(city_name=city_name, feed_name=feed_name, feed_data=feed_data) 
+                    extractor.extract()
 
-                    extractor.extract_data()
                     return feed_data
 
         await asyncio.sleep(polling_interval)
