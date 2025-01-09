@@ -1,5 +1,7 @@
 import json
+from tqdm import tqdm
 from pathlib import Path
+from loguru import logger 
 
 from src.setup.custom_types import FeedData 
 from src.setup.paths import GEOGRAPHICAL_DATA, make_data_directories
@@ -11,7 +13,7 @@ class GeodataExtractor:
         self.city_name: str = city_name.lower()
         self.feed_name: str = feed_name.lower()
         self.feed_data: FeedData | None = feed_data 
-        self.path_to_station_geodata: Path = GEOGRAPHICAL_DATA / self.city_name / f"station_geodata.json" 
+        self.path_to_station_geodata: Path = GEOGRAPHICAL_DATA / self.city_name / "station_geodata.json" 
 
         make_data_directories()
 
@@ -26,8 +28,10 @@ class GeodataExtractor:
 
         if self.feed_name == "station_information":
             all_station_data = self.feed_data["data"]["stations"]
-            station_geodata = self.extract_offical_station_geodata(items=all_station_data)  
-            self.save_data(data=station_geodata)
+            fetched_station_geodata = self.extract_offical_station_geodata(items=all_station_data)  
+            saved_station_geodata = self.get_saved_data()
+            saved_station_geodata.update(fetched_station_geodata)            
+            self.save_data(data=saved_station_geodata)
         
         elif self.feed_name == "free_bike_status":
             all_free_bikes = self.feed_data["data"]["bikes"]
@@ -43,8 +47,13 @@ class GeodataExtractor:
 
     def get_unknown_addresses(self, coordinates: list[list[float]], station_geodata: dict[str, list[float]]):
         
-        for coordinate in coordinates:
+        for coordinate in tqdm(
+            iterable=coordinates,
+            desc="Checking for and identifying unknown locations"
+        ):
             if coordinate not in station_geodata.values():
+                logger.warning(f"{coordinate} is not currently logged")
+                breakpoint()
                 found_geodata: dict[str, list[float]] = reverse_geocode(latitude=coordinate[0], longitude=coordinate[1])
                 station_geodata.update(found_geodata)
 
