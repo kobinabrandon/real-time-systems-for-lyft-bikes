@@ -46,18 +46,14 @@ class GeodataExtractor:
                     
         elif self.feed_name == "free_bike_status":
             all_free_bikes: BikeInformation = self.feed_data["data"]["bikes"]
+            breakpoint()
             coordinates_of_free_bikes: ListOfCoordinates = self.extract_coordinates(items=all_free_bikes)
-            saved_official_station_geodata: OfficialStationGeodata = self.get_saved_data(official=True)
 
-            identified_geodata_of_free_bikes: FoundGeodata = self.get_unknown_addresses(
-                coordinates=coordinates_of_free_bikes, 
-                saved_station_geodata=saved_official_station_geodata
-            )
+            identified_geodata_of_free_bikes: FoundGeodata = self.get_unknown_addresses(coordinates=coordinates_of_free_bikes)
 
             self.save_data(data=identified_geodata_of_free_bikes, official=False)                   
     
-    @staticmethod
-    def get_unknown_addresses(coordinates: ListOfCoordinates, saved_station_geodata: OfficialStationGeodata) -> FoundGeodata: 
+    def get_unknown_addresses(self, coordinates: ListOfCoordinates) -> FoundGeodata: 
         """
         Takes the geodata that from the "station_information" feed and checks whether each of the given 
         coordinate is already in the data from that feed. If it isn't, reverse geocoding will be used to obtain 
@@ -71,12 +67,13 @@ class GeodataExtractor:
             FoundGeodata: a dictionary of coordinates and the addessses that were obtained through reverse geocoding
         """
         all_found_geodata: FoundGeodata = {}
+        saved_official_station_geodata: OfficialStationGeodata = self.get_saved_data(official=True)
 
         for coordinate in tqdm( 
             iterable=coordinates,
             desc="Checking for and identifying unknown locations"
         ):
-            if coordinate not in saved_station_geodata.values():
+            if coordinate not in saved_official_station_geodata:
                 found_geodata: FoundGeodata = reverse_geocode(latitude=coordinate[0], longitude=coordinate[1])
                 all_found_geodata.update(found_geodata)
 
