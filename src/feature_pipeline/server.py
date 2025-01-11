@@ -4,12 +4,12 @@ import requests
 import websockets
 
 from loguru import logger
-from argparse import ArgumentParser, Namespace
 from collections.abc import AsyncGenerator
+from argparse import ArgumentParser, Namespace
 from websockets.legacy.server import WebSocketServerProtocol
 
 from src.setup.config import websocket_config 
-from src.setup.custom_types import FeedData
+from src.setup.custom_types import Feed, FeedData
 from src.feature_pipeline.feeds import choose_feed, poll
 
 

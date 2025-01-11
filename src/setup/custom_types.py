@@ -1,75 +1,21 @@
 """
 Creating custom types for the data that is being provided by the various GBFS data sources.
 """
-from dataclasses import dataclass, field
+from typing import TypeAlias
 
 
-@dataclass
-class Feed:
-    data: dict[str, str] = field(default_factory=dict)
-    
-    def __getitem__(self, key: str):
-        if key in self.data:
-            return self.data[key]
-        else:
-            raise KeyError(f"There is no key named {key}")
-    
-    def __setitem__(self, key: str, url: str):
-        self.data[key] = url
-                                                                                                                      
+Feed: TypeAlias = dict[str, str]
+FeedsPerLanguage: TypeAlias = dict[str, list[Feed]]
+LanguageOptions: TypeAlias = dict[str, FeedsPerLanguage]                                                                                       
 
-@dataclass
-class FeedsPerLanguage:
-    data: dict[str, list[Feed]] = field(default_factory=dict)
+AllData: TypeAlias = dict[str, LanguageOptions]
+FeedData: TypeAlias = dict[str, dict[str, list[dict[str, int|str]]]]
 
-    def __getitem__(self, language: str):
-        if language in self.data:
-            return self.data[language]
-        else:
-            raise KeyError(f"There is no key named {language}")
+# ExtractedGeodata: TypeAlias = dict[str, str | list[float]]
+StationInformation: TypeAlias = list[dict[str, str | int | float | dict[str, str]]] 
+BikeInformation: TypeAlias = list[dict[str, str | int | float | dict[str, str]]] 
 
-    def __setitem__(self, language: str, feed_for_language: list[Feed]):
-        self.data[language] = feed_for_language
-
-
-@dataclass
-class LanguageOptions:
-    data: dict[str, FeedsPerLanguage] = field(default_factory=dict)
-
-    def __getitem__(self, language: str):
-        if language in self.data: 
-            return self.data[language]
-        else:
-            raise KeyError(f"There is no key named {language}")
-
-    def __setitem__(self, language: str, feeds_of_all_languages: FeedsPerLanguage):
-        self.data[language] = feeds_of_all_languages 
-
-
-@dataclass
-class AllData:
-    data: dict[str, LanguageOptions] = field(default_factory=dict)
-
-    def __getitem__(self, name: str):
-        if name in self.data:
-            return self.data[name]
-        else:
-            raise KeyError(f"There is no key name {name}")
-
-    def __setitem__(self, name: str, data: LanguageOptions):
-        self.data[name] = data
-
-
-@dataclass
-class FeedData:
-    data: dict[str, dict[str, list[dict[str, int|str]]]] = field(default_factory=dict)
-
-    def __getitem__(self, name: str):
-        if name in self.data:
-            return self.data[name]
-        else:
-            raise KeyError(f"There is no key name {name}")
-
-    def __setitem__(self, name: str, data: dict[str, list[dict[str, int|str]]]):
-        self.data[name] = data
+ListOfCoordinates: TypeAlias = list[list[float]]
+FoundGeodata: TypeAlias = dict[str, list[float]]
+OfficialStationGeodata: TypeAlias = list[dict[str, list[float]]] | list[dict[str, str | list[float]]]
 
