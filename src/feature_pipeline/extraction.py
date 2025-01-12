@@ -1,6 +1,8 @@
 import json
+from sre_compile import BRANCH
 from tqdm import tqdm
 from pathlib import Path
+from loguru import logger
 
 from src.setup.custom_types import FeedData 
 from src.feature_pipeline.geocoding import reverse_geocode
@@ -46,14 +48,11 @@ class GeodataExtractor:
                     
         elif self.feed_name == "free_bike_status":
             all_free_bikes: BikeInformation = self.feed_data["data"]["bikes"]
-            breakpoint()
             coordinates_of_free_bikes: ListOfCoordinates = self.extract_coordinates(items=all_free_bikes)
+            found_geodata_of_free_bikes: list[FoundGeodata] = self.get_unknown_addresses(coordinates=coordinates_of_free_bikes)
+            self.save_data(data=found_geodata_of_free_bikes, official=False)                   
 
-            identified_geodata_of_free_bikes: FoundGeodata = self.get_unknown_addresses(coordinates=coordinates_of_free_bikes)
-
-            self.save_data(data=identified_geodata_of_free_bikes, official=False)                   
-    
-    def get_unknown_addresses(self, coordinates: ListOfCoordinates) -> FoundGeodata: 
+    def get_unknown_addresses(self, coordinates: ListOfCoordinates) -> list[FoundGeodata]: 
         """
         Takes the geodata that from the "station_information" feed and checks whether each of the given 
         coordinate is already in the data from that feed. If it isn't, reverse geocoding will be used to obtain 
@@ -61,23 +60,96 @@ class GeodataExtractor:
 
         Args:
             coordinates: the coordinates whose addresses we will be attempting to find 
-            saved_station_geodata: the geodata obtained from the "station_information" feed 
 
         Returns:
             FoundGeodata: a dictionary of coordinates and the addessses that were obtained through reverse geocoding
         """
-        all_found_geodata: FoundGeodata = {}
         saved_official_station_geodata: OfficialStationGeodata = self.get_saved_data(official=True)
+        
+        coordinates_to_browse: list[FoundGeodata] = [
+             {"coordinate": coordinate} for coordinate in coordinates
+        ]
 
-        for coordinate in tqdm( 
-            iterable=coordinates,
-            desc="Checking for and identifying unknown locations"
+        if Path(self.path_to_other_geodata).exists(): 
+            saved_data_on_free_bikes:  list[FoundGeodata] = self.get_saved_data(official=False)
+            
+            newly_labelled_geodata: list[FoundGeodata] = self.__inherit_names_and_addresses_from_saved_data__(
+                coordinates_to_browse=coordinates_to_browse, 
+                saved_data=saved_data_on_free_bikes
+            )
+
+            undone: list[FoundGeodata] = [item for item in newly_labelled_geodata if len(item) > 1] 
+
+            return self.__check_geodata_in_saved_official_geodata__(
+                coordinates_to_browse=undone,
+                saved_geodata=saved_official_station_geodata
+            )
+
+        else:
+            return self.__check_geodata_in_saved_official_geodata__(
+                coordinates_to_browse=coordinates_to_browse,
+                saved_geodata=saved_official_station_geodata
+            )
+
+    def __inherit_names_and_addresses_from_saved_data__(
+            self, 
+            coordinates_to_browse: list[FoundGeodata], 
+            saved_data: list[FoundGeodata] | OfficialStationGeodata
+    ) -> list[FoundGeodata]:
+
+        for bike in tqdm(
+            iterable=coordinates_to_browse,
+            desc="Attempting to label coordinates with using the station_information feed"
         ):
-            if coordinate not in saved_official_station_geodata:
-                found_geodata: FoundGeodata = reverse_geocode(latitude=coordinate[0], longitude=coordinate[1])
-                all_found_geodata.update(found_geodata)
+            for element in saved_data:
+                if bike["coordinate"] == element["coordinate"]:
+                    bike["name"], bike["address"] = element["name"], element["address"]
+        
+        return coordinates_to_browse 
 
-        return all_found_geodata 
+    def __check_geodata_in_saved_official_geodata__(
+            self, 
+            coordinates_to_browse: list[FoundGeodata],
+            saved_geodata: OfficialStationGeodata 
+    ) -> list[FoundGeodata]:
+
+        all_found_geodata: list[FoundGeodata] = [] 
+        
+        coordinates_to_browse = self.__inherit_names_and_addresses_from_saved_data__(
+            coordinates_to_browse=coordinates_to_browse,
+            saved_data=saved_geodata
+        )
+
+        undone: list[FoundGeodata] = [item for item in coordinates_to_browse if len(item) > 1] 
+                
+        if len(undone) == 0:
+            return coordinates_to_browse
+        else:
+            logger.warning(
+                f"{len(undone)} coordinates not found in the saved data from the saved_information feed" 
+            )
+
+            for element in tqdm(
+                iterable=coordinates_to_browse,
+                desc="Reverse geocoding to identify unknown locations"
+            ):
+                if len(element) == 1:  # Focus on the geodata elements that don't have any addresses or names yet    
+                    found_addresses_and_coordinates: FoundGeodata = reverse_geocode(coordinate=element["coordinate"])
+                    all_found_geodata.append(found_addresses_and_coordinates)
+
+            return all_found_geodata 
+
+
+    def get_names_from_addresses(
+        self, 
+        addresses_and_coordinates: dict[str, list[float]]
+    ):
+        # Checking "official" source
+        saved_station_geodata: OfficialStationGeodata = self.get_saved_data(official=True) 
+        
+        for geodata in addresses_and_coordinates:
+            # if geodata["address"] in  
+            pass
         
     def update_official_station_geodata(self, items: StationInformation) -> OfficialStationGeodata: 
         """
@@ -137,7 +209,7 @@ class GeodataExtractor:
 
         return False if coordinate not in station_info.values() else True
 
-    def save_data(self, data: FoundGeodata | OfficialStationGeodata, official: bool) -> None:
+    def save_data(self, data: list[FoundGeodata] | OfficialStationGeodata, official: bool) -> None:
         """
         Save the station geodata that has been created or updated as a json file.
 
@@ -150,7 +222,7 @@ class GeodataExtractor:
         with open(path, mode="w") as file:
             json.dump(data, file)
 
-    def get_saved_data(self, official: bool) -> OfficialStationGeodata: 
+    def get_saved_data(self, official: bool) -> OfficialStationGeodata | list[FoundGeodata]: 
         """
         Retrieve saved geodata as a dictionary 
 

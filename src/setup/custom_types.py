@@ -17,6 +17,6 @@ BikeInformation: TypeAlias = list[dict[str, str | int | float | dict[str, str]]]
 FeedData: TypeAlias = dict[str, dict[str, StationInformation | BikeInformation]]
 
 ListOfCoordinates: TypeAlias = list[list[float]]
-FoundGeodata: TypeAlias = dict[str, list[float]]
+FoundGeodata: TypeAlias = dict[str, str | list[float]] 
 OfficialStationGeodata: TypeAlias = list[dict[str, list[float]]] | list[dict[str, str | list[float]]]
 
