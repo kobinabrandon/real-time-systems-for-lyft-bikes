@@ -29,13 +29,13 @@ def reverse_geocode(coordinate: list[float]) -> FoundGeodata:
         first_try = str(nominatim.reverse(query=coordinate))
 
         if first_try != "None":
-            geodata["name"], geodata["address"] = first_try
+            geodata["name"], geodata["address"] = first_try, first_try
             geodata["coordinate"] = coordinate
         else:
             photon = Photon(user_agent=general_config.email)
             second_try = str(photon.reverse(query=coordinate))  # If this returns "None" (unlikely), we will look into it later.
 
-            geodata["name"], geodata["address"] = second_try 
+            geodata["name"], geodata["address"] = second_try, second_try 
             geodata["coordinate"] = coordinate
   
         return geodata

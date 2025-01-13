@@ -1,5 +1,4 @@
 import json
-from sre_compile import BRANCH
 from tqdm import tqdm
 from pathlib import Path
 from loguru import logger
@@ -71,32 +70,46 @@ class GeodataExtractor:
         ]
 
         if Path(self.path_to_other_geodata).exists(): 
-            saved_data_on_free_bikes:  list[FoundGeodata] = self.get_saved_data(official=False)
+            saved_data_on_free_bikes: list[FoundGeodata] = self.get_saved_data(official=False)
             
-            newly_labelled_geodata: list[FoundGeodata] = self.__inherit_names_and_addresses_from_saved_data__(
+            newly_labelled_geodata: list[FoundGeodata] = self.__label_coordinates_based_on_saved_data__(
                 coordinates_to_browse=coordinates_to_browse, 
                 saved_data=saved_data_on_free_bikes
             )
 
-            undone: list[FoundGeodata] = [item for item in newly_labelled_geodata if len(item) > 1] 
-
-            return self.__check_geodata_in_saved_official_geodata__(
-                coordinates_to_browse=undone,
-                saved_geodata=saved_official_station_geodata
+            unlabelled_coordinates: list[FoundGeodata] = [item for item in newly_labelled_geodata if len(item) == 1] 
+            
+            # Check whether coordinates that failed to be labelled with the secondary feed can be labelled using the 
+            # saved data from the station_information feed
+            return self.__check_saved_official_geodata_or_geocode__(
+                coordinates_to_browse=unlabelled_coordinates,
+                saved_data=saved_official_station_geodata
             )
 
         else:
-            return self.__check_geodata_in_saved_official_geodata__(
+            # Since the file doesn't exist, it makes sense to move directly to attempting to label using the data
+            # from the station_information feed 
+            return self.__check_saved_official_geodata_or_geocode__(
                 coordinates_to_browse=coordinates_to_browse,
-                saved_geodata=saved_official_station_geodata
+                saved_data=saved_official_station_geodata
             )
 
-    def __inherit_names_and_addresses_from_saved_data__(
+    def __label_coordinates_based_on_saved_data__(
             self, 
             coordinates_to_browse: list[FoundGeodata], 
             saved_data: list[FoundGeodata] | OfficialStationGeodata
     ) -> list[FoundGeodata]:
+        """
+        Check whether each of a number of coordinates can be found in the saved data. If so, the coordinate in question
+        will inherit the address and name from its counterpart in the saved data.
 
+        Args:
+            coordinates_to_browse: a list of dictionaries that contains primarily coordinates 
+            saved_data: the contents of the saved data 
+
+        Returns:
+           list[FoundGeodata]: the (potentially) re-labelled coordinates
+        """
         for bike in tqdm(
             iterable=coordinates_to_browse,
             desc="Attempting to label coordinates with using the station_information feed"
@@ -107,38 +120,51 @@ class GeodataExtractor:
         
         return coordinates_to_browse 
 
-    def __check_geodata_in_saved_official_geodata__(
+    def __check_saved_official_geodata_or_geocode__(
             self, 
             coordinates_to_browse: list[FoundGeodata],
-            saved_geodata: OfficialStationGeodata 
+            saved_data: OfficialStationGeodata 
     ) -> list[FoundGeodata]:
+        """
+        Attempt to label the coordinates with the saved data from the station_information feed, and resort 
+        to geocoding for the coordinates that were not successfully labelled.
 
-        all_found_geodata: list[FoundGeodata] = [] 
-        
-        coordinates_to_browse = self.__inherit_names_and_addresses_from_saved_data__(
+        Args:
+            coordinates_to_browse: a list of dictionaries that contains primarily coordinates 
+            saved_data: the contents of the saved data from the station_information
+
+        Returns:
+           list[FoundGeodata]: the newly labelled coordinates 
+        """
+        labelled_coordinates: list[FoundGeodata]= self.__label_coordinates_based_on_saved_data__(
             coordinates_to_browse=coordinates_to_browse,
-            saved_data=saved_geodata
+            saved_data=saved_data
         )
-
-        undone: list[FoundGeodata] = [item for item in coordinates_to_browse if len(item) > 1] 
+        
+        # Focus on the geodata elements that don't have any addresses or names yet    
+        unlabelled_coordinates: list[FoundGeodata] = [item for item in labelled_coordinates if len(item) == 1] 
                 
-        if len(undone) == 0:
-            return coordinates_to_browse
-        else:
+        if len(unlabelled_coordinates) != 0:
+            
+            # Add successfully labelled coordinates (with their labels)
+            all_found_geodata: list[FoundGeodata] = [] 
+            all_found_geodata.extend(labelled_coordinates)
+
             logger.warning(
-                f"{len(undone)} coordinates not found in the saved data from the saved_information feed" 
+                f"{len(unlabelled_coordinates)}/{len(coordinates_to_browse)} coordinates were not found in the data saved from the saved_information feed" 
             )
 
             for element in tqdm(
-                iterable=coordinates_to_browse,
-                desc="Reverse geocoding to identify unknown locations"
+                iterable=unlabelled_coordinates,
+                desc="Reverse geocoding to identify the unknown locations"
             ):
-                if len(element) == 1:  # Focus on the geodata elements that don't have any addresses or names yet    
-                    found_addresses_and_coordinates: FoundGeodata = reverse_geocode(coordinate=element["coordinate"])
-                    all_found_geodata.append(found_addresses_and_coordinates)
-
+                found_addresses_and_coordinates: FoundGeodata = reverse_geocode(coordinate=element["coordinate"])
+                all_found_geodata.append(found_addresses_and_coordinates)
+            
             return all_found_geodata 
 
+        else:
+            return labelled_coordinates
 
     def get_names_from_addresses(
         self, 
